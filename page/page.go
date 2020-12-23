@@ -149,6 +149,7 @@ func (p *Page) SaveResource(f string) {
 	}
 
 	wg := sync.WaitGroup{}
+	visitedHosts := map[string]string{}
 	doc.Find("script, link, img, a").Each(func(i int, s *goquery.Selection) {
 		//h, err := goquery.OuterHtml(s)
 		//if err != nil {
@@ -175,29 +176,43 @@ func (p *Page) SaveResource(f string) {
 		if !ok {
 			return
 		}
-		wg.Add(1)
 
+		resourceUrl, err := parseResourceUrl(link, sourceUrl, baseTagHref)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		if nodeName == "a" {
+			s.SetAttr(attrName, resourceUrl.String())
+			return
+		}
+
+		headers, err := client.Headers(resourceUrl,  map[string]string{
+			"Referer" : sourceUrl,
+		})
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		// pre request cookie
+		if visitedHosts[resourceUrl.Host] != "200" {
+			resp, err:= request(p.client, resourceUrl.String(), headers)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			visitedHosts[resourceUrl.Host] = strconv.Itoa(resp.StatusCode)
+			if p.config.Debug {
+				log.Printf("Pre request cookie: %d %s", resp.StatusCode, resourceUrl.String())
+				log.Println(visitedHosts)
+			}
+		}
+
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
-
-			resourceUrl, err := parseResourceUrl(link, sourceUrl, baseTagHref)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-
-			if nodeName == "a" {
-				s.SetAttr(attrName, resourceUrl.String())
-				return
-			}
-
-			headers, err := client.Headers(resourceUrl,  map[string]string{
-				"Referer" : sourceUrl,
-			})
-			if err != nil {
-				log.Println(err)
-				return
-			}
 			resp, err:= request(p.client, resourceUrl.String(), headers)
 			if err != nil {
 				log.Println(err)
@@ -250,15 +265,15 @@ func parseResourceUrl(urlRaw, sourceUrl, baseTagHref string) (*urlpkg.URL, error
 	if err != nil {
 		return nil, err
 	}
-	if url.Scheme == "" && url.Host == "" {
+	// /site/x.jpg
+	if url.Scheme == "" && url.Host == "" && baseTagHref != "" {
+		url.Path = baseTagHref + strings.TrimPrefix(url.Path, baseTagHref)
+	}
+	if url.Scheme == "" && url.Host == "" && baseTagHref == "" {
 		// x/y
 		// ./x/y
 		if !strings.HasPrefix(urlRaw, "/") {
 			url.Path = strings.TrimSuffix(path.Dir(sourceUrlP.Path), "/") + PathSeparator + url.Path
-		}
-		// /site/x.jpg
-		if baseTagHref != "" {
-			url.Path = baseTagHref + strings.TrimPrefix(url.Path, baseTagHref)
 		}
 	}
 	// /x/y
