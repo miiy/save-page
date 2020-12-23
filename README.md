@@ -1,13 +1,15 @@
 # save-page
 
+Save page and resources from link
+
 ## Build
 
 ```bash
 go build
 ```
 
-## Use example
+## Usage
 
 ```bash
-save-page https://test.com/x.html
+./save-page https://test.com/x.html
 ```
