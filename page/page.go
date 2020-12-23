@@ -13,6 +13,7 @@ import (
 	"net/http"
 	urlpkg "net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -148,7 +149,7 @@ func (p *Page) SaveResource(f string) {
 	}
 
 	wg := sync.WaitGroup{}
-	doc.Find("script, link, img").Each(func(i int, s *goquery.Selection) {
+	doc.Find("script, link, img, a").Each(func(i int, s *goquery.Selection) {
 		//h, err := goquery.OuterHtml(s)
 		//if err != nil {
 		//	log.Println(err)
@@ -162,6 +163,7 @@ func (p *Page) SaveResource(f string) {
 			"script": "src",
 			"link": "href",
 			"img": "src",
+			"a" : "href",
 		}
 		for k, v := range tagSrcMap {
 			if nodeName == k {
@@ -177,9 +179,15 @@ func (p *Page) SaveResource(f string) {
 
 		go func() {
 			defer wg.Done()
+
 			resourceUrl, err := parseResourceUrl(link, sourceUrl, baseTagHref)
 			if err != nil {
 				log.Println(err)
+				return
+			}
+
+			if nodeName == "a" {
+				s.SetAttr(attrName, resourceUrl.String())
 				return
 			}
 
@@ -242,12 +250,24 @@ func parseResourceUrl(urlRaw, sourceUrl, baseTagHref string) (*urlpkg.URL, error
 	if err != nil {
 		return nil, err
 	}
-	if !url.IsAbs() {
-		url.Scheme = sourceUrlP.Scheme
-		url.Host = sourceUrlP.Host
+	if url.Scheme == "" && url.Host == "" {
+		// x/y
+		// ./x/y
+		if !strings.HasPrefix(urlRaw, "/") {
+			url.Path = strings.TrimSuffix(path.Dir(sourceUrlP.Path), "/") + PathSeparator + url.Path
+		}
+		// /site/x.jpg
 		if baseTagHref != "" {
 			url.Path = baseTagHref + strings.TrimPrefix(url.Path, baseTagHref)
 		}
+	}
+	// /x/y
+	// //www.test.com/x.y
+	if url.Scheme == "" {
+		url.Scheme = sourceUrlP.Scheme
+	}
+	if url.Host == "" {
+		url.Host = sourceUrlP.Host
 	}
 	return url, nil
 }
