@@ -23,6 +23,18 @@ func main()  {
 
 	initialization(cfg)
 
+	savePageHandler(cfg, url)
+}
+
+func initialization(config *config.Config)  {
+	if !file.Exists(config.StoragePath) {
+		if err := file.Mkdir(config.StoragePath); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func savePageHandler(cfg *config.Config, url string)  {
 	p, err := page.NewPage(cfg, url)
 	if err != nil {
 		log.Fatal(err)
@@ -36,12 +48,4 @@ func main()  {
 		log.Fatal(err)
 	}
 	p.SaveResource(f)
-}
-
-func initialization(config *config.Config)  {
-	if !file.Exists(config.StoragePath) {
-		if err := file.Mkdir(config.StoragePath); err != nil {
-			log.Fatal(err)
-		}
-	}
 }
