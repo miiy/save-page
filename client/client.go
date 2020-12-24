@@ -5,10 +5,12 @@ import (
 	"golang.org/x/net/publicsuffix"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	urlpkg "net/url"
 	"path"
+	"time"
 )
 
 type Client struct {
@@ -18,20 +20,41 @@ type Client struct {
 
 func NewClient(config *config.Config) (*Client, error) {
 	client := &http.Client{}
-	if config.Proxy != "" {
-		proxyUrl := func(_ *http.Request) (*urlpkg.URL, error) {
-			return urlpkg.Parse(config.Proxy)
-		}
-		transport := &http.Transport{Proxy: proxyUrl}
-		client.Transport = transport
+	// timeout
+	if config.Timeout > 0 {
+		client.Timeout = time.Duration(config.Timeout) * time.Second
 	}
-
+	// cookie
 	// jar, err := cookiejar.New(nil)
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 	if err != nil {
 		return nil, err
 	}
 	client.Jar = jar
+	var transport *http.Transport
+	// proxy
+	if config.Proxy != "" {
+		proxyUrl := func(_ *http.Request) (*urlpkg.URL, error) {
+			return urlpkg.Parse(config.Proxy)
+		}
+		if transport == nil {
+			transport = &http.Transport{}
+		}
+		transport.Proxy = proxyUrl
+	}
+	//
+	if config.DialContext.Timeout > 0 && config.DialContext.KeepAlive > 0 {
+		if transport == nil {
+			transport = &http.Transport{}
+		}
+		transport.DialContext = (&net.Dialer{
+			Timeout:   time.Duration(config.DialContext.Timeout) * time.Second,
+			KeepAlive: time.Duration(config.DialContext.KeepAlive) * time.Second,
+		}).DialContext
+	}
+	if transport != nil {
+		client.Transport = transport
+	}
 	return &Client{
 		config: config,
 		client: client,

@@ -1,5 +1,10 @@
 {
   "debug": false,
   "storage-path" : "./data",
+  "timeout": 0,
+  "dial_context": {
+    "timeout": 30,
+    "keepalive": 30
+  },
   "proxy" : ""
 }
