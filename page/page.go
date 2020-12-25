@@ -245,7 +245,7 @@ func (p *Page) SaveResource(f string) {
 	}
 	docHtml, _:= doc.Html()
 
-	err = file.Write(f, []byte(docHtml))
+	err = ioutil.WriteFile(f, []byte(docHtml), 0644)
 	if err != nil {
 		log.Println(err)
 	}
@@ -305,7 +305,7 @@ func saveFile(name string, b []byte) bool {
 		log.Println(name + " already exist.")
 		return false
 	}
-	err := file.Write(name, b)
+	err := ioutil.WriteFile(name, b, 0644)
 	if err != nil {
 		log.Println(err)
 		return false

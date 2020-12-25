@@ -7,22 +7,6 @@ import (
 	"strings"
 )
 
-func Write(name string, b []byte) error {
-	file, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			log.Println(err)
-		}
-	}()
-	if _, err := file.Write(b); err != nil {
-		return err
-	}
-	return nil
-}
-
 func ReadAll(name string) ([]byte, error) {
 	file, err := os.OpenFile(name, os.O_RDWR, 0644)
 	if err != nil {
