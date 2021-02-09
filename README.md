@@ -1,6 +1,6 @@
 # save-page
 
-Save page ad html or pdf from link
+Save page as html or pdf from link
 
 ## Build
 
